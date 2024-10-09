@@ -50,6 +50,33 @@ func createNewArticle(w http.ResponseWriter, r *http.Request) {
     json.NewEncoder(w).Encode(article)
 }
 
+// Delete article
+func deleteArticle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	for index, article := range Articles {
+		if article.Id == id {
+			Articles = append(Articles[:index], Articles[index+1:]...)
+		}
+	}
+}
+
+// Update article
+func updateArticle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+	reqBody, _ := ioutil.ReadAll(r.Body)
+	var updatedArticle Article
+	json.Unmarshal(reqBody, &updatedArticle)
+
+	for i, article := range Articles {
+		if article.Id == id {
+			Articles[i] = updatedArticle
+		}
+	}
+}
+
 // Home page function
 func homePage(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Welcome to the HomePage!")
@@ -64,6 +91,8 @@ func handleRequests() {
     myRouter.HandleFunc("/", homePage)
     myRouter.HandleFunc("/articles", returnAllArticles)
 	myRouter.HandleFunc("/article", createNewArticle).Methods("POST")
+	myRouter.HandleFunc("/article/{id}", deleteArticle).Methods("DELETE")
+	myRouter.HandleFunc("/article/{id}", updateArticle).Methods("PUT")
 	myRouter.HandleFunc("/article/{id}", returnSingleArticle)
     log.Fatal(http.ListenAndServe(":8081", myRouter))
 }
