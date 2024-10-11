@@ -16,6 +16,7 @@ import (
     "go.mongodb.org/mongo-driver/mongo/readpref"
     "go.mongodb.org/mongo-driver/bson/primitive"
     "io/ioutil"
+    "strconv"
 )
 
 // Article struct to match MongoDB documents
@@ -57,12 +58,46 @@ func getArticleCollection() *mongo.Collection {
     return client.Database(os.Getenv("MONGO_DB_NAME")).Collection("articles")
 }
 
-// Return all articles
+// Return all articles WITH FILTERING, SORTING, AND PAGINATION
 func returnAllArticles(w http.ResponseWriter, r *http.Request) {
     fmt.Println("Endpoint Hit: returnAllArticles")
 
     collection := getArticleCollection()
-    cursor, err := collection.Find(context.TODO(), bson.M{})
+
+    // Get query parameters for filtering, sorting, and pagination
+    nameFilter := r.URL.Query().Get("name")
+    sortField := r.URL.Query().Get("sort_by")
+    sortOrder := r.URL.Query().Get("order")
+    page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+    limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+
+    filter := bson.M{}
+    if nameFilter != "" {
+        filter["name"] = bson.M{"$regex": nameFilter, "$options": "i"}  // Case-insensitive regex filter
+    }
+
+    // Set default sorting order to ascending
+    sort := bson.D{{"name", 1}}
+    if sortField != "" {
+        if sortOrder == "desc" {
+            sort = bson.D{{sortField, -1}} // Sort descending
+        } else {
+            sort = bson.D{{sortField, 1}}  // Sort ascending
+        }
+    }
+
+    // Set default pagination if not provided
+    if limit == 0 {
+        limit = 10 // Default to 10 articles per page
+    }
+    if page == 0 {
+        page = 1 // Default to page 1
+    }
+
+    skip := (page - 1) * limit // Skip articles for pagination
+
+    findOptions := options.Find().SetSort(sort).SetLimit(int64(limit)).SetSkip(int64(skip))
+    cursor, err := collection.Find(context.TODO(), filter, findOptions)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
@@ -118,7 +153,7 @@ func createNewArticle(w http.ResponseWriter, r *http.Request) {
     var article Article
     json.Unmarshal(reqBody, &article)
 
-    article.ID = primitive.NewObjectID() // Generate new ObjectID
+    article.ID = primitive.NewObjectID()
     collection := getArticleCollection()
     _, err := collection.InsertOne(context.TODO(), article)
     if err != nil {
