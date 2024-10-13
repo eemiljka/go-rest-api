@@ -12,6 +12,18 @@ I implemented a real database instead of a fake/mock one by adding an env file a
 
 I added filtering, sorting and pagination by modifying the code.
 
+### Filtering
+
+![filtering](./images/filtering.png)
+
+### Sorting
+
+![sorting](./images/sorting.png)
+
+### Pagination
+
+![pagination](./images/pagination.png)
+
 ## See changes more specifically
 
 To see the specific changes, see commits.
